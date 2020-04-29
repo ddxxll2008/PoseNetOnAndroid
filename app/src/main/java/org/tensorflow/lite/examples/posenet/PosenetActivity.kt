@@ -71,14 +71,14 @@ class PosenetActivity :
     private val minConfidence = 0.5
 
     /** Radius of circle used to draw keypoints.  */
-    private val circleRadius = 8.0f
+    private val circleRadius = 20.0f
 
     /** Paint class holds the style and color information to draw geometries,text and bitmaps. */
     private var paint = Paint()
 
     /** A shape for extracting frame data.   */
-    private val PREVIEW_WIDTH = 640
-    private val PREVIEW_HEIGHT = 480
+    private var PREVIEW_WIDTH = 640
+    private var PREVIEW_HEIGHT = 480
 
     /** An object for the Posenet library.    */
     private lateinit var posenet: Posenet
@@ -415,6 +415,7 @@ class PosenetActivity :
                 rgbBytes, previewWidth, previewHeight,
                 Bitmap.Config.ARGB_8888
             )
+            Log.d(TAG, "width" + previewHeight + ",height:" + previewHeight)
 
             // Create rotated version for portrait display
             val rotateMatrix = Matrix()
@@ -428,12 +429,69 @@ class PosenetActivity :
             )
             image.close()
 
-            // Process an image for analysis in every 3 frames.
-            frameCounter = (frameCounter + 1) % 3
+            // Process an image for analysis in every 1 frames.
+            frameCounter = (frameCounter + 1) % 1
             if (frameCounter == 0) {
                 processImage(rotatedBitmap)
             }
         }
+    }
+
+    /** Process image using Posenet library.   */
+    private fun processImage(bitmap: Bitmap) {
+        // Crop bitmap.
+        val croppedBitmap = extensionBitmap(bitmap)
+
+        // Created scaled version of bitmap for model input.
+        val scaledBitmap = Bitmap.createScaledBitmap(croppedBitmap, MODEL_WIDTH, MODEL_HEIGHT, true)
+
+        // Perform inference.
+        val person = posenet.estimateSinglePose(scaledBitmap)
+        val canvas: Canvas = surfaceHolder!!.lockCanvas()
+        draw(canvas, person, scaledBitmap)
+    }
+
+    /** Crop Bitmap to maintain aspect ratio of model input.   */
+    private fun extensionBitmap(bitmap: Bitmap): Bitmap {
+        val bitmapRatio = bitmap.height.toFloat() / bitmap.width
+        val modelInputRatio = MODEL_HEIGHT.toFloat() / MODEL_WIDTH
+        var croppedBitmap = bitmap
+
+        // Acceptable difference between the modelInputRatio and bitmapRatio to skip cropping.
+        val maxDifference = 1e-5
+
+        // Checks if the bitmap has similar aspect ratio as the required model input.
+        when {
+            abs(modelInputRatio - bitmapRatio) < maxDifference -> return croppedBitmap
+            modelInputRatio < bitmapRatio -> {
+                // New image is taller so we are height constrained.
+                croppedBitmap = Bitmap.createBitmap(
+                    bitmap.height,
+                    bitmap.height,
+                    Bitmap.Config.ARGB_8888
+                )
+                val paint1 = Paint()
+
+                val canvas = Canvas(croppedBitmap);
+                canvas.drawBitmap(bitmap, 0.0f, 0.0f, paint1);
+                canvas.save();
+                canvas.restore()
+            }
+            else -> {
+                croppedBitmap = Bitmap.createBitmap(
+                    bitmap.width,
+                    bitmap.width,
+                    Bitmap.Config.ARGB_8888
+                )
+                val paint1 = Paint()
+
+                val canvas = Canvas(croppedBitmap);
+                canvas.drawBitmap(bitmap, 0.0f, 0.0f, paint1);
+                canvas.save();
+                canvas.restore()
+            }
+        }
+        return croppedBitmap
     }
 
     /** Crop Bitmap to maintain aspect ratio of model input.   */
@@ -475,7 +533,7 @@ class PosenetActivity :
 
     /** Set the paint color and size.    */
     private fun setPaint() {
-        paint.color = Color.RED
+        paint.color = Color.GREEN
         paint.textSize = 80.0f
         paint.strokeWidth = 8.0f
     }
@@ -490,34 +548,72 @@ class PosenetActivity :
         val right: Int
         val top: Int
         val bottom: Int
-        if (canvas.height > canvas.width) {
-            screenWidth = canvas.width
-            screenHeight = canvas.width
-            left = 0
-            top = (canvas.height - canvas.width) / 2
-        } else {
-            screenWidth = canvas.height
-            screenHeight = canvas.height
-            left = (canvas.width - canvas.height) / 2
-            top = 0
-        }
+
+        //改为全屏显示
+        screenWidth = canvas.width
+        screenHeight = canvas.height
+        left = 0
+        top = 0
+//        if (canvas.height > canvas.width) {
+//            screenWidth = canvas.width
+//            screenHeight = canvas.width
+//            left = 0
+//            top = (canvas.height - canvas.width) / 2
+//        } else {
+//            screenWidth = canvas.height
+//            screenHeight = canvas.height
+//            left = (canvas.width - canvas.height) / 2
+//            top = 0
+//        }
         right = left + screenWidth
         bottom = top + screenHeight
 
+        val matrix = Matrix()
+        var previewBitmap: Bitmap
+        var zoomRatio: Float = 0.0f
+        if (canvas.height > canvas.width) {
+            zoomRatio = canvas.height.toFloat() / canvas.width
+            matrix.postScale(zoomRatio, zoomRatio)
+        } else {
+            zoomRatio = canvas.width.toFloat() / canvas.height
+            matrix.postScale(zoomRatio, zoomRatio)
+        }
+        val temBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        if (canvas.height > canvas.width) {
+            previewBitmap = Bitmap.createBitmap(
+                temBitmap,
+                0,
+                0,
+                (temBitmap.width * canvas.width / canvas.height),
+                temBitmap.height
+            );
+        } else {
+            previewBitmap = Bitmap.createBitmap(
+                temBitmap,
+                0,
+                0,
+                temBitmap.width,
+                (temBitmap.width * canvas.height / canvas.width)
+            );
+        }
+
         setPaint()
         canvas.drawBitmap(
-            bitmap,
-            Rect(0, 0, bitmap.width, bitmap.height),
+            previewBitmap,
+            Rect(0, 0, previewBitmap.width, previewBitmap.height),
             Rect(left, top, right, bottom),
             paint
         )
 
-        val widthRatio = screenWidth.toFloat() / MODEL_WIDTH
+        val widthRatio = screenWidth * zoomRatio / MODEL_WIDTH
         val heightRatio = screenHeight.toFloat() / MODEL_HEIGHT
 
         // Draw key points over the image.
         for (keyPoint in person.keyPoints) {
-            if (keyPoint.score > minConfidence) {
+            if (keyPoint.score > minConfidence &&
+                (keyPoint.bodyPart.equals(BodyPart.LEFT_WRIST) ||
+                        keyPoint.bodyPart.equals(BodyPart.RIGHT_WRIST))
+            ) {
                 val position = keyPoint.position
                 val adjustedX: Float = position.x.toFloat() * widthRatio + left
                 val adjustedY: Float = position.y.toFloat() * heightRatio + top
@@ -561,20 +657,6 @@ class PosenetActivity :
 
         // Draw!
         surfaceHolder!!.unlockCanvasAndPost(canvas)
-    }
-
-    /** Process image using Posenet library.   */
-    private fun processImage(bitmap: Bitmap) {
-        // Crop bitmap.
-        val croppedBitmap = cropBitmap(bitmap)
-
-        // Created scaled version of bitmap for model input.
-        val scaledBitmap = Bitmap.createScaledBitmap(croppedBitmap, MODEL_WIDTH, MODEL_HEIGHT, true)
-
-        // Perform inference.
-        val person = posenet.estimateSinglePose(scaledBitmap)
-        val canvas: Canvas = surfaceHolder!!.lockCanvas()
-        draw(canvas, person, scaledBitmap)
     }
 
     /**
