@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<set xmlns:android="http://schemas.android.com/apk/res/android">
+    <set>
+        <objectAnimator
+            android:duration="1000"
+            android:propertyName="alpha"
+            android:valueFrom="1f"
+            android:valueTo="0f" />
+        <objectAnimator
+            android:duration="1000"
+            android:pivotX="100%"
+            android:pivotY="50%"
+            android:propertyName="rotation"
+            android:valueFrom="0f"
+            android:valueTo="90f" />
+    </set>
+</set>

@@ -17,6 +17,9 @@
 package org.tensorflow.lite.examples.posenet
 
 import android.Manifest
+import android.animation.Animator
+import android.animation.AnimatorInflater
+import android.animation.AnimatorListenerAdapter
 import android.app.AlertDialog
 import android.app.Dialog
 import android.content.Context
@@ -37,6 +40,7 @@ import android.util.Log
 import android.util.Size
 import android.util.SparseIntArray
 import android.view.*
+import android.widget.ImageView
 import android.widget.Toast
 import org.tensorflow.lite.examples.posenet.lib.BodyPart
 import org.tensorflow.lite.examples.posenet.lib.Person
@@ -140,6 +144,11 @@ class PosenetActivity :
     /** Abstract interface to someone holding a display surface.    */
     private var surfaceHolder: SurfaceHolder? = null
 
+    var leftBarricade: ImageView? = null
+    var rightBarricade: ImageView? = null
+    var leftAnimSet: Animator? = null
+    var rightAnimSet: Animator? = null
+
     /** [CameraDevice.StateCallback] is called when [CameraDevice] changes its state.   */
     private val stateCallback = object : CameraDevice.StateCallback() {
 
@@ -199,6 +208,19 @@ class PosenetActivity :
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         surfaceView = view.findViewById(R.id.surfaceView)
         surfaceHolder = surfaceView!!.holder
+
+        leftBarricade = view.findViewById(R.id.iv_left)
+        rightBarricade = view.findViewById(R.id.iv_right)
+        leftAnimSet =
+            AnimatorInflater.loadAnimator(this.context, R.animator.left_rotate_animation)
+                .apply {
+                    setTarget(leftBarricade)
+                }
+        rightAnimSet =
+            AnimatorInflater.loadAnimator(this.context, R.animator.right_rotate_animation)
+                .apply {
+                    setTarget(rightBarricade)
+                }
     }
 
     override fun onResume() {
@@ -421,7 +443,7 @@ class PosenetActivity :
             val rotateMatrix = Matrix()
             //前置摄像头需要镜像翻转
             rotateMatrix.postScale(-1.0f, 1.0f)
-            rotateMatrix.postRotate(90.0f)
+//            rotateMatrix.postRotate(90.0f)
 
             val rotatedBitmap = Bitmap.createBitmap(
                 imageBitmap, 0, 0, previewWidth, previewHeight,
@@ -554,48 +576,16 @@ class PosenetActivity :
         screenHeight = canvas.height
         left = 0
         top = 0
-//        if (canvas.height > canvas.width) {
-//            screenWidth = canvas.width
-//            screenHeight = canvas.width
-//            left = 0
-//            top = (canvas.height - canvas.width) / 2
-//        } else {
-//            screenWidth = canvas.height
-//            screenHeight = canvas.height
-//            left = (canvas.width - canvas.height) / 2
-//            top = 0
-//        }
         right = left + screenWidth
         bottom = top + screenHeight
 
-        val matrix = Matrix()
-        var previewBitmap: Bitmap
-        var zoomRatio: Float = 0.0f
-        if (canvas.height > canvas.width) {
-            zoomRatio = canvas.height.toFloat() / canvas.width
-            matrix.postScale(zoomRatio, zoomRatio)
-        } else {
-            zoomRatio = canvas.width.toFloat() / canvas.height
-            matrix.postScale(zoomRatio, zoomRatio)
-        }
-        val temBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
-        if (canvas.height > canvas.width) {
-            previewBitmap = Bitmap.createBitmap(
-                temBitmap,
-                0,
-                0,
-                (temBitmap.width * canvas.width / canvas.height),
-                temBitmap.height
-            );
-        } else {
-            previewBitmap = Bitmap.createBitmap(
-                temBitmap,
-                0,
-                0,
-                temBitmap.width,
-                (temBitmap.width * canvas.height / canvas.width)
-            );
-        }
+        var previewBitmap = Bitmap.createBitmap(
+            bitmap,
+            0,
+            0,
+            bitmap.width,
+            (bitmap.height * screenHeight / screenWidth)
+        )
 
         setPaint()
         canvas.drawBitmap(
@@ -605,8 +595,8 @@ class PosenetActivity :
             paint
         )
 
-        val widthRatio = screenWidth * zoomRatio / MODEL_WIDTH
-        val heightRatio = screenHeight.toFloat() / MODEL_HEIGHT
+        val widthRatio = screenWidth.toFloat() / MODEL_WIDTH
+        val heightRatio = screenHeight.toFloat() * screenWidth / (MODEL_HEIGHT * screenHeight)
 
         // Draw key points over the image.
         for (keyPoint in person.keyPoints) {

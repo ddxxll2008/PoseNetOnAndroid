@@ -17,26 +17,49 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-  <SurfaceView
-      android:id="@+id/surfaceView"
-      android:layout_width="wrap_content"
-      android:layout_height="wrap_content"
-      android:layout_marginBottom="0dp"
-      android:layout_alignParentBottom="true"
-      android:layout_alignParentStart="true"
-      android:layout_alignParentTop="true"/>
+    <SurfaceView
+        android:id="@+id/surfaceView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="0dp" />
 
-  <android.support.v7.widget.Toolbar
-      android:id="@+id/toolbar"
-      android:layout_width="match_parent"
-      android:layout_height="?attr/actionBarSize"
-      android:layout_alignParentTop="true"
-      android:background="@color/tfe_semi_transparent">
-
-    <ImageView
+    <TextView
+        android:id="@+id/tv_score"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:src="@drawable/tfl2_logo" />
-  </android.support.v7.widget.Toolbar>
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="10dp"
+        android:text="分数："
+        android:textSize="40sp" />
+
+    <TextView
+        android:id="@+id/tv_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_marginTop="10dp"
+        android:layout_marginEnd="10dp"
+        android:text="时间："
+        android:textSize="40sp" />
+
+    <ImageView
+        android:id="@+id/iv_left"
+        android:layout_width="80dp"
+        android:layout_height="140dp"
+        android:layout_alignParentBottom="true"
+        android:layout_marginStart="10dp"
+        android:background="@drawable/barricade" />
+
+    <ImageView
+        android:id="@+id/iv_right"
+        android:layout_width="80dp"
+        android:layout_height="140dp"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginEnd="10dp"
+        android:background="@drawable/barricade" />
 
 </RelativeLayout>
