@@ -19,7 +19,6 @@ package org.tensorflow.lite.examples.posenet
 import android.Manifest
 import android.animation.Animator
 import android.animation.AnimatorInflater
-import android.animation.AnimatorListenerAdapter
 import android.app.AlertDialog
 import android.app.Dialog
 import android.content.Context
@@ -35,13 +34,17 @@ import android.os.HandlerThread
 import android.support.v4.app.ActivityCompat
 import android.support.v4.app.DialogFragment
 import android.support.v4.app.Fragment
+import android.support.v4.app.FragmentManager
 import android.support.v4.content.ContextCompat
+import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.util.Size
 import android.util.SparseIntArray
 import android.view.*
 import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
+import kotlinx.android.synthetic.main.tfe_pn_activity_posenet.*
 import org.tensorflow.lite.examples.posenet.lib.BodyPart
 import org.tensorflow.lite.examples.posenet.lib.Person
 import org.tensorflow.lite.examples.posenet.lib.Posenet
@@ -49,8 +52,8 @@ import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 
-class PosenetActivity :
-    Fragment(),
+class PosenetActivity() :
+    AppCompatActivity(),
     ActivityCompat.OnRequestPermissionsResultCallback {
 
     /** List of body joints that should be connected.    */
@@ -144,10 +147,53 @@ class PosenetActivity :
     /** Abstract interface to someone holding a display surface.    */
     private var surfaceHolder: SurfaceHolder? = null
 
-    var leftBarricade: ImageView? = null
-    var rightBarricade: ImageView? = null
-    var leftAnimSet: Animator? = null
-    var rightAnimSet: Animator? = null
+    private var leftBarricade: ImageView? = null
+    private var rightBarricade: ImageView? = null
+    private var leftRotateAnimSet: Animator? = null
+    private var rightRotateAnimSet: Animator? = null
+    private var leftTranslationYAnimSet: Animator? = null
+    private var rightTranslationYAnimSet: Animator? = null
+
+    private var leftOrRight = BodyPart.RIGHT_WRIST
+    private var goLeft = true
+
+//    private val mHandler: Handler = Handler()
+//    private var mCountTime = 64
+//    private var countDownTv: TextView? = null
+//
+//    private var currentTime: Long = 0
+//    private var scoreNum = 0
+
+    //倒计时，并处理点击事件
+//    fun startCountDown() {
+//        mHandler.postDelayed(countDown, 0)
+//    }
+
+    /*
+        倒计时
+     */
+//    private val countDown = object : Runnable {
+//        override fun run() {
+//            if (mCountTime > 60) {
+//                countDownTv!!.text = (mCountTime - 61).toString()
+//            } else if (mCountTime == 61) {
+//                countDownTv!!.text = "Go"
+//                currentTime = System.currentTimeMillis()
+//            } else if (mCountTime >= 0) {
+//                countDownTv!!.visibility = View.GONE
+//                tv_time!!.text = mCountTime.toString()
+////                mHandler.postDelayed(this, 1000)
+//            }
+//            mCountTime--
+//
+//            if (mCountTime >= 0) {
+//                mHandler.postDelayed(this, 1000)
+//            } else {
+//                //todo 倒计时结束
+////                resetCounter()
+//            }
+//        }
+//    }
 
     /** [CameraDevice.StateCallback] is called when [CameraDevice] changes its state.   */
     private val stateCallback = object : CameraDevice.StateCallback() {
@@ -166,7 +212,7 @@ class PosenetActivity :
 
         override fun onError(cameraDevice: CameraDevice, error: Int) {
             onDisconnected(cameraDevice)
-            this@PosenetActivity.activity?.finish()
+            this@PosenetActivity?.finish()
         }
     }
 
@@ -195,31 +241,60 @@ class PosenetActivity :
      * @param text The message to show
      */
     private fun showToast(text: String) {
-        val activity = activity
+        val activity = this
         activity?.runOnUiThread { Toast.makeText(activity, text, Toast.LENGTH_SHORT).show() }
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View? = inflater.inflate(R.layout.tfe_pn_activity_posenet, container, false)
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.tfe_pn_activity_posenet)
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        surfaceView = view.findViewById(R.id.surfaceView)
+        surfaceView = findViewById(R.id.surfaceView)
         surfaceHolder = surfaceView!!.holder
 
-        leftBarricade = view.findViewById(R.id.iv_left)
-        rightBarricade = view.findViewById(R.id.iv_right)
-        leftAnimSet =
-            AnimatorInflater.loadAnimator(this.context, R.animator.left_rotate_animation)
+        leftBarricade = findViewById(R.id.iv_left)
+        rightBarricade = findViewById(R.id.iv_right)
+
+//        countDownTv = findViewById(R.id.tv_start)
+
+        startLeftTransYAnim()
+
+        setLeftOrRightHand(intent.getBooleanExtra(IS_LEFT_HAND, false))
+    }
+
+    private fun startLeftRotateAnim() {
+        leftRotateAnimSet =
+            AnimatorInflater.loadAnimator(this, R.animator.anim_left_rotate)
                 .apply {
                     setTarget(leftBarricade)
+                    start()
                 }
-        rightAnimSet =
-            AnimatorInflater.loadAnimator(this.context, R.animator.right_rotate_animation)
+    }
+
+    private fun startRightRotateAnim() {
+        rightRotateAnimSet =
+            AnimatorInflater.loadAnimator(this, R.animator.anim_right_rotate)
                 .apply {
                     setTarget(rightBarricade)
+                    start()
+                }
+    }
+
+    private fun startLeftTransYAnim() {
+        leftTranslationYAnimSet =
+            AnimatorInflater.loadAnimator(this, R.animator.anim_left_translation_y)
+                .apply {
+                    setTarget(leftBarricade)
+                    start()
+                }
+    }
+
+    private fun startRightTransYAnim() {
+        rightTranslationYAnimSet =
+            AnimatorInflater.loadAnimator(this, R.animator.anim_right_translation_y)
+                .apply {
+                    setTarget(rightBarricade)
+                    start()
                 }
     }
 
@@ -231,7 +306,7 @@ class PosenetActivity :
     override fun onStart() {
         super.onStart()
         openCamera()
-        posenet = Posenet(this.context!!)
+        posenet = Posenet(this!!)
     }
 
     override fun onPause() {
@@ -247,7 +322,7 @@ class PosenetActivity :
 
     private fun requestCameraPermission() {
         if (shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)) {
-            ConfirmationDialog().show(childFragmentManager, FRAGMENT_DIALOG)
+            ConfirmationDialog().show(supportFragmentManager, FRAGMENT_DIALOG)
         } else {
             requestPermissions(arrayOf(Manifest.permission.CAMERA), REQUEST_CAMERA_PERMISSION)
         }
@@ -261,7 +336,7 @@ class PosenetActivity :
         if (requestCode == REQUEST_CAMERA_PERMISSION) {
             if (allPermissionsGranted(grantResults)) {
                 ErrorDialog.newInstance(getString(R.string.tfe_pn_request_permission))
-                    .show(childFragmentManager, FRAGMENT_DIALOG)
+                    .show(supportFragmentManager, FRAGMENT_DIALOG)
             }
         } else {
             super.onRequestPermissionsResult(requestCode, permissions, grantResults)
@@ -277,7 +352,7 @@ class PosenetActivity :
      */
     private fun setUpCameraOutputs() {
 
-        val activity = activity
+        val activity = this
         val manager = activity!!.getSystemService(Context.CAMERA_SERVICE) as CameraManager
         try {
             for (cameraId in manager.cameraIdList) {
@@ -322,7 +397,7 @@ class PosenetActivity :
             // Currently an NPE is thrown when the Camera2API is used but not supported on the
             // device this code runs.
             ErrorDialog.newInstance(getString(R.string.tfe_pn_camera_error))
-                .show(childFragmentManager, FRAGMENT_DIALOG)
+                .show(supportFragmentManager, FRAGMENT_DIALOG)
         }
     }
 
@@ -331,12 +406,12 @@ class PosenetActivity :
      */
     private fun openCamera() {
         val permissionCamera =
-            ContextCompat.checkSelfPermission(activity!!, Manifest.permission.CAMERA)
+            ContextCompat.checkSelfPermission(this!!, Manifest.permission.CAMERA)
         if (permissionCamera != PackageManager.PERMISSION_GRANTED) {
             requestCameraPermission()
         }
         setUpCameraOutputs()
-        val manager = activity!!.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+        val manager = this!!.getSystemService(Context.CAMERA_SERVICE) as CameraManager
         try {
             // Wait for camera to open - 2.5 seconds is sufficient
             if (!cameraOpenCloseLock.tryAcquire(2500, TimeUnit.MILLISECONDS)) {
@@ -601,13 +676,23 @@ class PosenetActivity :
         // Draw key points over the image.
         for (keyPoint in person.keyPoints) {
             if (keyPoint.score > minConfidence &&
-                (keyPoint.bodyPart.equals(BodyPart.LEFT_WRIST) ||
-                        keyPoint.bodyPart.equals(BodyPart.RIGHT_WRIST))
+                (keyPoint.bodyPart.equals(leftOrRight))
             ) {
                 val position = keyPoint.position
                 val adjustedX: Float = position.x.toFloat() * widthRatio + left
                 val adjustedY: Float = position.y.toFloat() * heightRatio + top
                 canvas.drawCircle(adjustedX, adjustedY, circleRadius, paint)
+
+                //todo 增加得分
+                if (goLeft && adjustedX < (0.3 * screenWidth) && adjustedY < (0.7 * screenHeight)) {
+                    startLeftRotateAnim()
+                    startRightTransYAnim()
+                    goLeft = !goLeft
+                } else if (!goLeft && adjustedX > (0.7 * screenWidth) && adjustedY < (0.7 * screenHeight)) {
+                    startRightRotateAnim()
+                    startLeftTransYAnim()
+                    goLeft = !goLeft
+                }
             }
         }
 
@@ -626,24 +711,24 @@ class PosenetActivity :
 //            }
 //        }
 
-        canvas.drawText(
-            "Score: %.2f".format(person.score),
-            (15.0f * widthRatio),
-            (30.0f * heightRatio + bottom),
-            paint
-        )
-        canvas.drawText(
-            "Device: %s".format(posenet.device),
-            (15.0f * widthRatio),
-            (50.0f * heightRatio + bottom),
-            paint
-        )
-        canvas.drawText(
-            "Time: %.2f ms".format(posenet.lastInferenceTimeNanos * 1.0f / 1_000_000),
-            (15.0f * widthRatio),
-            (70.0f * heightRatio + bottom),
-            paint
-        )
+//        canvas.drawText(
+//            "Score: %.2f".format(person.score),
+//            (15.0f * widthRatio),
+//            (30.0f * heightRatio + bottom),
+//            paint
+//        )
+//        canvas.drawText(
+//            "Device: %s".format(posenet.device),
+//            (15.0f * widthRatio),
+//            (50.0f * heightRatio + bottom),
+//            paint
+//        )
+//        canvas.drawText(
+//            "Time: %.2f ms".format(posenet.lastInferenceTimeNanos * 1.0f / 1_000_000),
+//            (15.0f * widthRatio),
+//            (70.0f * heightRatio + bottom),
+//            paint
+//        )
 
         // Draw!
         surfaceHolder!!.unlockCanvasAndPost(canvas)
@@ -761,5 +846,16 @@ class PosenetActivity :
          * Tag for the [Log].
          */
         private const val TAG = "PosenetActivity"
+    }
+
+    //设置左右手
+    private fun setLeftOrRightHand(isLeftHand: Boolean) {
+        leftOrRight = if (isLeftHand) {
+            BodyPart.LEFT_WRIST
+        } else {
+            BodyPart.RIGHT_WRIST
+        }
+        //todo 开始倒计时
+//        startCountDown()
     }
 }

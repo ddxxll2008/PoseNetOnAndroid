@@ -33,7 +33,8 @@
         android:layout_marginStart="10dp"
         android:layout_marginTop="10dp"
         android:text="分数："
-        android:textSize="40sp" />
+        android:textSize="40sp"
+        android:visibility="gone" />
 
     <TextView
         android:id="@+id/tv_time"
@@ -43,7 +44,8 @@
         android:layout_marginTop="10dp"
         android:layout_marginEnd="10dp"
         android:text="时间："
-        android:textSize="40sp" />
+        android:textSize="40sp"
+        android:visibility="gone" />
 
     <ImageView
         android:id="@+id/iv_left"
@@ -51,6 +53,7 @@
         android:layout_height="140dp"
         android:layout_alignParentBottom="true"
         android:layout_marginStart="10dp"
+        android:layout_marginBottom="10dp"
         android:background="@drawable/barricade" />
 
     <ImageView
@@ -60,6 +63,16 @@
         android:layout_alignParentEnd="true"
         android:layout_alignParentBottom="true"
         android:layout_marginEnd="10dp"
+        android:layout_marginBottom="10dp"
+        android:alpha="0"
         android:background="@drawable/barricade" />
+
+    <TextView
+        android:id="@+id/tv_start"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:layout_centerInParent="true"
+        android:textSize="40sp"
+        android:visibility="gone" />
 
 </RelativeLayout>
