@@ -18,6 +18,8 @@
 
 package org.tensorflow.lite.examples.posenet
 
+import android.Manifest
+
 /** Request camera and external storage permission.   */
 const val REQUEST_CAMERA_PERMISSION = 1
 

@@ -31,20 +31,18 @@ import android.media.ImageReader.OnImageAvailableListener
 import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
-import android.support.v4.app.ActivityCompat
-import android.support.v4.app.DialogFragment
-import android.support.v4.app.Fragment
-import android.support.v4.app.FragmentManager
-import android.support.v4.content.ContextCompat
-import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.util.Size
 import android.util.SparseIntArray
-import android.view.*
+import android.view.Surface
+import android.view.SurfaceHolder
+import android.view.SurfaceView
 import android.widget.ImageView
-import android.widget.TextView
 import android.widget.Toast
-import kotlinx.android.synthetic.main.tfe_pn_activity_posenet.*
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.DialogFragment
 import org.tensorflow.lite.examples.posenet.lib.BodyPart
 import org.tensorflow.lite.examples.posenet.lib.Person
 import org.tensorflow.lite.examples.posenet.lib.Posenet
@@ -146,6 +144,12 @@ class PosenetActivity() :
 
     /** Abstract interface to someone holding a display surface.    */
     private var surfaceHolder: SurfaceHolder? = null
+
+    /** [HandlerThread] where all camera operations run */
+    private val cameraThread = HandlerThread("CameraThread").apply { start() }
+
+    /** [Handler] corresponding to [cameraThread] */
+    private val cameraHandler = Handler(cameraThread.looper)
 
     private var leftBarricade: ImageView? = null
     private var rightBarricade: ImageView? = null
@@ -408,7 +412,8 @@ class PosenetActivity() :
         val permissionCamera =
             ContextCompat.checkSelfPermission(this!!, Manifest.permission.CAMERA)
         if (permissionCamera != PackageManager.PERMISSION_GRANTED) {
-            requestCameraPermission()
+            ErrorDialog.newInstance(getString(R.string.tfe_pn_request_permission))
+                .show(supportFragmentManager, FRAGMENT_DIALOG)
         }
         setUpCameraOutputs()
         val manager = this!!.getSystemService(Context.CAMERA_SERVICE) as CameraManager
@@ -527,7 +532,7 @@ class PosenetActivity() :
             image.close()
 
             // Process an image for analysis in every 1 frames.
-            frameCounter = (frameCounter + 1) % 1
+            frameCounter = (frameCounter + 1) % 3
             if (frameCounter == 0) {
                 processImage(rotatedBitmap)
             }
@@ -544,11 +549,36 @@ class PosenetActivity() :
 
         // Perform inference.
         val person = posenet.estimateSinglePose(scaledBitmap)
-        val canvas: Canvas = surfaceHolder!!.lockCanvas()
-        draw(canvas, person, scaledBitmap)
+        for (keyPoint in person.keyPoints) {
+            if (keyPoint.score > minConfidence &&
+                (keyPoint.bodyPart.equals(leftOrRight))
+            ) {
+                val position = keyPoint.position
+
+                Log.d(TAG, position.x.toString() + "  " + position.y)
+
+                val b1 = (position.x < (0.2 * MODEL_WIDTH))
+                val b2 = position.y > (0.5 * MODEL_HEIGHT)
+                Log.d(TAG, b1.toString() + "  " + b2)
+
+                //todo 增加得分
+                if (goLeft && position.x < (0.2 * MODEL_WIDTH)) {
+                    startLeftRotateAnim()
+                    startRightTransYAnim()
+                    goLeft = !goLeft
+                } else if (!goLeft && position.x > (0.8 * MODEL_WIDTH)) {
+                    startRightRotateAnim()
+                    startLeftTransYAnim()
+                    goLeft = !goLeft
+                }
+            }
+        }
+
+//        val canvas: Canvas = surfaceHolder!!.lockCanvas()
+//        draw(canvas, person, scaledBitmap)
     }
 
-    /** Crop Bitmap to maintain aspect ratio of model input.   */
+    /** Extense Bitmap to maintain aspect ratio of model input.   */
     private fun extensionBitmap(bitmap: Bitmap): Bitmap {
         val bitmapRatio = bitmap.height.toFloat() / bitmap.width
         val modelInputRatio = MODEL_HEIGHT.toFloat() / MODEL_WIDTH
@@ -683,12 +713,17 @@ class PosenetActivity() :
                 val adjustedY: Float = position.y.toFloat() * heightRatio + top
                 canvas.drawCircle(adjustedX, adjustedY, circleRadius, paint)
 
+                Log.d(
+                    TAG,
+                    adjustedX.toString() + "  " + adjustedY + "  " + (0.2 * screenWidth) + "    " + (0.8 * screenHeight)
+                )
+
                 //todo 增加得分
-                if (goLeft && adjustedX < (0.3 * screenWidth) && adjustedY < (0.7 * screenHeight)) {
+                if (goLeft && adjustedX < (0.2 * screenWidth) && adjustedY > (0.5 * screenHeight)) {
                     startLeftRotateAnim()
                     startRightTransYAnim()
                     goLeft = !goLeft
-                } else if (!goLeft && adjustedX > (0.7 * screenWidth) && adjustedY < (0.7 * screenHeight)) {
+                } else if (!goLeft && adjustedX > (0.8 * screenWidth) && adjustedY > (0.5 * screenHeight)) {
                     startRightRotateAnim()
                     startLeftTransYAnim()
                     goLeft = !goLeft
@@ -748,16 +783,18 @@ class PosenetActivity() :
 
             // This is the surface we need to record images for processing.
             val recordingSurface = imageReader!!.surface
+            val targets = listOf(surfaceView!!.holder.surface, imageReader!!.surface)
 
             // We set up a CaptureRequest.Builder with the output Surface.
             previewRequestBuilder = cameraDevice!!.createCaptureRequest(
                 CameraDevice.TEMPLATE_PREVIEW
-            )
+            ).apply { addTarget(surfaceView!!.holder.surface) }
             previewRequestBuilder!!.addTarget(recordingSurface)
 
             // Here, we create a CameraCaptureSession for camera preview.
             cameraDevice!!.createCaptureSession(
-                listOf(recordingSurface),
+//                listOf(recordingSurface),
+                targets,
                 object : CameraCaptureSession.StateCallback() {
                     override fun onConfigured(cameraCaptureSession: CameraCaptureSession) {
                         // The camera is already closed

@@ -12,9 +12,8 @@
 
     <application
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
-        android:label="@string/tfe_pn_app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:icon="@mipmap/app_icon"
+        android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme.Posenet">
 
@@ -36,14 +35,12 @@
         <activity
             android:name=".PosenetActivity"
             android:exported="true"
-            android:screenOrientation="landscape">
-        </activity>
+            android:screenOrientation="landscape"></activity>
 
         <activity
             android:name=".AnimationTestActivity"
             android:exported="true"
-            android:screenOrientation="landscape">
-        </activity>
+            android:screenOrientation="landscape"></activity>
 
     </application>
 

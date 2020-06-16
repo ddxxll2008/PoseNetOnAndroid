@@ -3,7 +3,7 @@ package org.tensorflow.lite.examples.posenet
 import android.animation.Animator
 import android.animation.AnimatorInflater
 import android.os.Bundle
-import android.support.v7.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatActivity
 import android.widget.Button
 import android.widget.ImageView
 

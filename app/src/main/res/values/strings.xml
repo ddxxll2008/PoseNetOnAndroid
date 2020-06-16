@@ -14,10 +14,12 @@
  limitations under the License.
 -->
 <resources>
-  <string name="tfe_pn_app_name" translation_description="Posenet demo app built with Posenet library [CHAR_LIMIT=40]">TFL Posenet</string>
-  <string name="tfe_pn_request_permission" translation_description="Request camera permission [CHAR_LIMIT=40]">This app needs camera permission.</string>
-  <string name="tfe_pn_camera_error" translation_description="Error regarding camera support[CHAR_LIMIT=40]">This device doesn\'t support Camera2 API.</string>
+    <string name="tfe_pn_app_name" translation_description="Posenet demo app built with Posenet library [CHAR_LIMIT=40]">TFL Posenet</string>
+    <string name="tfe_pn_request_permission" translation_description="Request camera permission [CHAR_LIMIT=40]">App需要相机权限</string>
+    <string name="tfe_pn_camera_error" translation_description="Error regarding camera support[CHAR_LIMIT=40]">This device doesn\'t support Camera2 API.</string>
     <string name="start">开始</string>
-  <string name="cancel">取消</string>
-    <string name="attention">使用注意事项\n1、尽量在光线明亮的地方使用\n2、尽量保持背景单调干净</string>
+    <string name="cancel">取消</string>
+    <string name="attention">使用注意事项\n1、相机中不可有其他人出现\n2、尽量在光线明亮的地方使用</string>
+    <string name="rationale_camera">App需要相机权限</string>
+    <string name="app_name">宅家训练</string>
 </resources>

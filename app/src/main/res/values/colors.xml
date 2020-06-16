@@ -15,9 +15,9 @@
 -->
 
 <resources>
-  <color name="tfe_color_primary">#ffa800</color>
-  <color name="tfe_color_primary_dark">#ff6f00</color>
-  <color name="tfe_color_accent">#425066</color>
+    <color name="tfe_color_primary">#EA80FC</color>
+    <color name="tfe_color_primary_dark">#AA00FF</color>
+    <color name="tfe_color_accent">#425066</color>
 
-  <color name="tfe_semi_transparent">#66000000</color>
+    <color name="tfe_semi_transparent">#66000000</color>
 </resources>
