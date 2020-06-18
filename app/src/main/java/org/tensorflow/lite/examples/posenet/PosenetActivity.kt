@@ -28,9 +28,7 @@ import android.hardware.camera2.*
 import android.media.Image
 import android.media.ImageReader
 import android.media.ImageReader.OnImageAvailableListener
-import android.os.Bundle
-import android.os.Handler
-import android.os.HandlerThread
+import android.os.*
 import android.util.Log
 import android.util.Size
 import android.util.SparseIntArray
@@ -43,9 +41,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.DialogFragment
+import kotlinx.android.synthetic.main.tfe_pn_activity_posenet.*
 import org.tensorflow.lite.examples.posenet.lib.BodyPart
 import org.tensorflow.lite.examples.posenet.lib.Person
 import org.tensorflow.lite.examples.posenet.lib.Posenet
+import java.lang.ref.WeakReference
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
@@ -53,6 +53,8 @@ import kotlin.math.abs
 class PosenetActivity() :
     AppCompatActivity(),
     ActivityCompat.OnRequestPermissionsResultCallback {
+    private val START_LEFT_ANIMATION = 0
+    private val START_RIGHT_ANIMATION = 1
 
     /** List of body joints that should be connected.    */
 //    private val bodyJoints = listOf(
@@ -161,6 +163,35 @@ class PosenetActivity() :
     private var leftOrRight = BodyPart.RIGHT_WRIST
     private var goLeft = true
 
+    private var lastCurrentTime: Long = 0
+
+    private class MyHandler(activity: PosenetActivity) : Handler() {
+        private val mActivity: WeakReference<PosenetActivity> = WeakReference(activity)
+
+        override fun handleMessage(msg: Message) {
+            if (mActivity.get() == null) {
+                return
+            }
+            val activity = mActivity.get()
+            when (msg.what) {
+                activity!!.START_LEFT_ANIMATION -> {
+                    activity!!.tv_score.text = "left"
+                    activity!!.startLeftRotateAnim()
+                    activity!!.startRightTransYAnim()
+                    activity!!.goLeft = !activity!!.goLeft
+                }
+                activity!!.START_RIGHT_ANIMATION -> {
+                    activity!!.tv_score.text = "right"
+                    activity!!.startRightRotateAnim()
+                    activity!!.startLeftTransYAnim()
+                    activity!!.goLeft = !activity!!.goLeft
+                }
+            }
+        }
+    }
+
+    private val myHandler: MyHandler = MyHandler(this)
+
 //    private val mHandler: Handler = Handler()
 //    private var mCountTime = 64
 //    private var countDownTv: TextView? = null
@@ -267,6 +298,7 @@ class PosenetActivity() :
     }
 
     private fun startLeftRotateAnim() {
+        Log.d(TAG, "startLeftRotateAnim")
         leftRotateAnimSet =
             AnimatorInflater.loadAnimator(this, R.animator.anim_left_rotate)
                 .apply {
@@ -276,6 +308,7 @@ class PosenetActivity() :
     }
 
     private fun startRightRotateAnim() {
+        Log.d(TAG, "startRightRotateAnim")
         rightRotateAnimSet =
             AnimatorInflater.loadAnimator(this, R.animator.anim_right_rotate)
                 .apply {
@@ -496,6 +529,8 @@ class PosenetActivity() :
             if (previewWidth == 0 || previewHeight == 0) {
                 return
             }
+            Log.d(TIME_TAG + 1,  (SystemClock.currentThreadTimeMillis() - lastCurrentTime).toString())
+            lastCurrentTime = SystemClock.currentThreadTimeMillis()
 
             val image = imageReader.acquireLatestImage() ?: return
             fillBytes(image.planes, yuvBytes)
@@ -532,10 +567,15 @@ class PosenetActivity() :
             image.close()
 
             // Process an image for analysis in every 1 frames.
-            frameCounter = (frameCounter + 1) % 3
-            if (frameCounter == 0) {
-                processImage(rotatedBitmap)
-            }
+//            frameCounter = (frameCounter + 1) % 3
+//            if (frameCounter == 0) {
+            Log.d(
+                TIME_TAG + 2,
+                (SystemClock.currentThreadTimeMillis() - lastCurrentTime).toString()
+            )
+            lastCurrentTime = SystemClock.currentThreadTimeMillis()
+            processImage(rotatedBitmap)
+//            }
         }
     }
 
@@ -576,6 +616,9 @@ class PosenetActivity() :
 
 //        val canvas: Canvas = surfaceHolder!!.lockCanvas()
 //        draw(canvas, person, scaledBitmap)
+
+        Log.d(TIME_TAG + 3, (SystemClock.currentThreadTimeMillis() - lastCurrentTime).toString())
+        lastCurrentTime = SystemClock.currentThreadTimeMillis()
     }
 
     /** Extense Bitmap to maintain aspect ratio of model input.   */
@@ -720,13 +763,19 @@ class PosenetActivity() :
 
                 //todo 增加得分
                 if (goLeft && adjustedX < (0.2 * screenWidth) && adjustedY > (0.5 * screenHeight)) {
-                    startLeftRotateAnim()
-                    startRightTransYAnim()
-                    goLeft = !goLeft
+//                    startLeftRotateAnim()
+//                    startRightTransYAnim()
+//                    goLeft = !goLeft
+                    val message = Message()
+                    message.what = START_LEFT_ANIMATION
+                    myHandler.sendMessage(message)
                 } else if (!goLeft && adjustedX > (0.8 * screenWidth) && adjustedY > (0.5 * screenHeight)) {
-                    startRightRotateAnim()
-                    startLeftTransYAnim()
-                    goLeft = !goLeft
+//                    startRightRotateAnim()
+//                    startLeftTransYAnim()
+//                    goLeft = !goLeft
+                    val message = Message()
+                    message.what = START_RIGHT_ANIMATION
+                    myHandler.sendMessage(message)
                 }
             }
         }
@@ -883,6 +932,7 @@ class PosenetActivity() :
          * Tag for the [Log].
          */
         private const val TAG = "PosenetActivity"
+        private const val TIME_TAG = "SystemCurrentTime"
     }
 
     //设置左右手
